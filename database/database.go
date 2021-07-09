@@ -69,10 +69,10 @@ func Tx(db *sql.DB, fc func(tx *sql.Tx) error) (err error) {
 	}
 	err = fc(tx)
 	if err != nil {
-		_ = tx.Rollback()
+		tx.Rollback()
 		return
 	}
-	_ = tx.Commit()
+	tx.Commit()
 	return
 }
 
