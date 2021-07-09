@@ -11,7 +11,7 @@ const (
 	Symbol      = "`-=[]\\;',./~!@#$%^&*()_+{}|:\"<>?"
 )
 
-func NonceStr(length int, bytes ...byte) (result string) {
+func Nonce(length int, bytes ...byte) (result string) {
 	if length <= 0 {
 		return
 	}
