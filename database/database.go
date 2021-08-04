@@ -52,8 +52,8 @@ func Exec(db *sql.DB, prepare string, args ...interface{}) (rowsAffected int64, 
 	return
 }
 
-// Tx begin a transaction
-func Tx(db *sql.DB, fc func(tx *sql.Tx) error) (err error) {
+// Ask begin a transaction
+func Ask(db *sql.DB, fc func(tx *sql.Tx) error) (err error) {
 	if db == nil {
 		err = errors.New("`db` is nil")
 		return
@@ -76,8 +76,8 @@ func Tx(db *sql.DB, fc func(tx *sql.Tx) error) (err error) {
 	return
 }
 
-// TxQuery query one sql in transaction
-func TxQuery(tx *sql.Tx, fc func(rows *sql.Rows) error, prepare string, args ...interface{}) (err error) {
+// AskQuery query one sql in transaction
+func AskQuery(tx *sql.Tx, fc func(rows *sql.Rows) error, prepare string, args ...interface{}) (err error) {
 	if tx == nil {
 		err = errors.New("`tx` is nil")
 		return
@@ -102,8 +102,8 @@ func TxQuery(tx *sql.Tx, fc func(rows *sql.Rows) error, prepare string, args ...
 	return
 }
 
-// TxExec execute one sql in transaction
-func TxExec(tx *sql.Tx, prepare string, args ...interface{}) (rowsAffected int64, err error) {
+// AskExec execute one sql in transaction
+func AskExec(tx *sql.Tx, prepare string, args ...interface{}) (rowsAffected int64, err error) {
 	if tx == nil {
 		err = errors.New("`tx` is nil")
 		return
