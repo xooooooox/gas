@@ -8,11 +8,11 @@ import (
 // Query query one sql
 func Query(db *sql.DB, fc func(rows *sql.Rows) error, prepare string, args ...interface{}) (err error) {
 	if db == nil {
-		err = errors.New("`db` is nil")
+		err = errors.New("unavailable of database connection")
 		return
 	}
 	if fc == nil {
-		err = errors.New("`fc` is nil")
+		err = errors.New("unavailable of scanning closure")
 		return
 	}
 	var stmt *sql.Stmt
@@ -34,7 +34,7 @@ func Query(db *sql.DB, fc func(rows *sql.Rows) error, prepare string, args ...in
 // Exec execute one sql
 func Exec(db *sql.DB, prepare string, args ...interface{}) (rowsAffected int64, err error) {
 	if db == nil {
-		err = errors.New("`db` is nil")
+		err = errors.New("unavailable of database connection")
 		return
 	}
 	var stmt *sql.Stmt
@@ -55,11 +55,11 @@ func Exec(db *sql.DB, prepare string, args ...interface{}) (rowsAffected int64, 
 // Ask begin a transaction
 func Ask(db *sql.DB, fc func(tx *sql.Tx) error) (err error) {
 	if db == nil {
-		err = errors.New("`db` is nil")
+		err = errors.New("unavailable of database connection")
 		return
 	}
 	if fc == nil {
-		err = errors.New("`fc` is nil")
+		err = errors.New("unavailable of transaction closure")
 		return
 	}
 	var tx *sql.Tx
@@ -79,11 +79,11 @@ func Ask(db *sql.DB, fc func(tx *sql.Tx) error) (err error) {
 // AskQuery query one sql in transaction
 func AskQuery(tx *sql.Tx, fc func(rows *sql.Rows) error, prepare string, args ...interface{}) (err error) {
 	if tx == nil {
-		err = errors.New("`tx` is nil")
+		err = errors.New("unavailable of database transaction")
 		return
 	}
 	if fc == nil {
-		err = errors.New("`fc` is nil")
+		err = errors.New("unavailable of scanning closure")
 		return
 	}
 	var stmt *sql.Stmt
@@ -105,7 +105,7 @@ func AskQuery(tx *sql.Tx, fc func(rows *sql.Rows) error, prepare string, args ..
 // AskExec execute one sql in transaction
 func AskExec(tx *sql.Tx, prepare string, args ...interface{}) (rowsAffected int64, err error) {
 	if tx == nil {
-		err = errors.New("`tx` is nil")
+		err = errors.New("unavailable of database transaction")
 		return
 	}
 	var stmt *sql.Stmt
