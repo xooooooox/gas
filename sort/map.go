@@ -13,7 +13,7 @@ func AscMsi(msi map[string]interface{}) (key []string, val []interface{}) {
 	key = make([]string, length, length)
 	val = make([]interface{}, length, length)
 	i := 0
-	for k, _ := range msi {
+	for k := range msi {
 		key[i] = k
 		i++
 	}
@@ -33,7 +33,7 @@ func DescMsi(msi map[string]interface{}) (key []string, val []interface{}) {
 	key = make([]string, length, length)
 	val = make([]interface{}, length, length)
 	i := 0
-	for k, _ := range msi {
+	for k := range msi {
 		key[i] = k
 		i++
 	}
