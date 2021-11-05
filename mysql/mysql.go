@@ -10,7 +10,7 @@ import (
 
 var db *sql.DB
 
-// Open connect to mysql service
+// Open connect to mysql service, auto set database connect; dsn: runner:112233@tcp(127.0.0.1:3306)/running?charset=utf8mb4&collation=utf8mb4_unicode_ci
 func Open(dsn string) (err error) {
 	db, err = sql.Open("mysql", dsn)
 	if err != nil {
@@ -20,6 +20,16 @@ func Open(dsn string) (err error) {
 	db.SetMaxOpenConns(256)
 	db.SetMaxIdleConns(256)
 	return
+}
+
+// GetDatabase get database connect
+func GetDatabase() *sql.DB {
+	return db
+}
+
+// SetDatabase set database connect
+func SetDatabase(database *sql.DB) {
+	db = database
 }
 
 // Query query
