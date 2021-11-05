@@ -6,7 +6,7 @@ import (
 
 // PascalToUnderline XxxYyy to xxx_yyy
 func PascalToUnderline(s string) string {
-	tmp := []byte{}
+	var tmp []byte
 	j := false
 	num := len(s)
 	for i := 0; i < num; i++ {
@@ -24,7 +24,7 @@ func PascalToUnderline(s string) string {
 
 // UnderlineToPascal xxx_yyy to XxxYyy
 func UnderlineToPascal(s string) string {
-	tmp := []byte{}
+	var tmp []byte
 	bytes := []byte(s)
 	length := len(bytes)
 	nextLetterNeedToUpper := true
