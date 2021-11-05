@@ -82,13 +82,13 @@ type BatchExec struct {
 	Args    []interface{}
 }
 
-// Begin begin a transaction
+// Begin transaction begin
 func (s *Exec) Begin() (err error) {
 	s.tx, err = s.db.Begin()
 	return
 }
 
-// Rollback rollback transaction
+// Rollback transaction rollback
 func (s *Exec) Rollback() (err error) {
 	if s.tx == nil {
 		err = fmt.Errorf("please open the transaction first")
@@ -98,7 +98,7 @@ func (s *Exec) Rollback() (err error) {
 	return
 }
 
-// Commit commit transaction
+// Commit transaction commit
 func (s *Exec) Commit() (err error) {
 	if s.tx == nil {
 		err = fmt.Errorf("please open the transaction first")
