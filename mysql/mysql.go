@@ -2,13 +2,18 @@ package mysql
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
+// db database object
 var db *sql.DB
+
+// ErrorTransactionNotOpened transaction not opened
+var ErrorTransactionNotOpened = errors.New("mysql: please open the transaction first")
 
 // Open connect to mysql service, auto set database connect; dsn: runner:112233@tcp(127.0.0.1:3306)/running?charset=utf8mb4&collation=utf8mb4_unicode_ci
 func Open(dsn string) (err error) {
@@ -17,43 +22,73 @@ func Open(dsn string) (err error) {
 		return
 	}
 	db.SetConnMaxLifetime(time.Minute * 3)
-	db.SetMaxOpenConns(256)
-	db.SetMaxIdleConns(256)
+	db.SetMaxOpenConns(512)
+	db.SetMaxIdleConns(128)
 	return
 }
 
-// GetDatabase get database connect
-func GetDatabase() *sql.DB {
+func Db0() *sql.DB {
 	return db
 }
 
-// SetDatabase set database connect
-func SetDatabase(database *sql.DB) {
+func Db1(database *sql.DB) {
 	db = database
 }
 
-// Query query
-type Query struct {
-	db   *sql.DB
-	scan func(rows *sql.Rows) (err error)
+func Query(anonymous func(rows *sql.Rows) (err error), prepare string, args ...interface{}) error {
+	return NewQueries().OneStepQuery(anonymous, prepare, args...)
 }
 
-// Scan set scan function
-func (s *Query) Scan(anonymous func(rows *sql.Rows) (err error)) *Query {
+func Exec(prepare string, args ...interface{}) (int64, error) {
+	return NewExecutes().OneStepExec(prepare, args...)
+}
+
+func AddOne(prepare string, args ...interface{}) (int64, error) {
+	return NewExecutes().OneStepAddOne(prepare, args...)
+}
+
+type Queries struct {
+	db      *sql.DB                          // database connection object
+	prepare string                           // sql statement to be executed
+	args    []interface{}                    // executed sql parameters
+	scan    func(rows *sql.Rows) (err error) // scan query results
+}
+
+func NewQueries() *Queries {
+	return &Queries{
+		db: db,
+	}
+}
+
+func (s *Queries) Prepare(prepare string) *Queries {
+	s.prepare = prepare
+	return s
+}
+
+func (s *Queries) Args(args ...interface{}) *Queries {
+	s.args = args
+	return s
+}
+
+func (s *Queries) Scan(anonymous func(rows *sql.Rows) (err error)) *Queries {
 	s.scan = anonymous
 	return s
 }
 
-// Query execute query sql
-func (s *Query) Query(prepare string, args ...interface{}) (err error) {
+func (s *Queries) FetchSql() (prepare string, args []interface{}) {
+	prepare, args = s.prepare, s.args
+	return
+}
+
+func (s *Queries) Query() (err error) {
 	var stmt *sql.Stmt
-	stmt, err = s.db.Prepare(prepare)
+	stmt, err = s.db.Prepare(s.prepare)
 	if err != nil {
 		return
 	}
 	defer stmt.Close()
 	var rows *sql.Rows
-	rows, err = stmt.Query(args...)
+	rows, err = stmt.Query(s.args...)
 	if err != nil {
 		return
 	}
@@ -62,72 +97,86 @@ func (s *Query) Query(prepare string, args ...interface{}) (err error) {
 	return
 }
 
-// NewQuery create a query
-func NewQuery() *Query {
-	return &Query{
+func (s *Queries) OneStepQuery(anonymous func(rows *sql.Rows) (err error), prepare string, args ...interface{}) (err error) {
+	err = s.Scan(anonymous).Prepare(prepare).Args(args...).Query()
+	return
+}
+
+type Executes struct {
+	db      *sql.DB                          // database connection object
+	tx      *sql.Tx                          // database transaction object
+	prepare string                           // sql statement to be executed
+	args    []interface{}                    // executed sql parameters
+	scan    func(rows *sql.Rows) (err error) // scan query results
+}
+
+func NewExecutes() *Executes {
+	return &Executes{
 		db: db,
 	}
 }
 
-// Exec exec
-type Exec struct {
-	db   *sql.DB
-	tx   *sql.Tx
-	scan func(rows *sql.Rows) (err error)
-}
-
-// BatchExec batch execute sql
-type BatchExec struct {
-	Prepare string
-	Args    []interface{}
-}
-
-// Begin transaction begin
-func (s *Exec) Begin() (err error) {
+func (s *Executes) Begin() (err error) {
 	s.tx, err = s.db.Begin()
 	return
 }
 
-// Rollback transaction rollback
-func (s *Exec) Rollback() (err error) {
+func (s *Executes) Rollback() (err error) {
 	if s.tx == nil {
-		err = fmt.Errorf("please open the transaction first")
+		err = ErrorTransactionNotOpened
 		return
 	}
 	err = s.tx.Rollback()
 	return
 }
 
-// Commit transaction commit
-func (s *Exec) Commit() (err error) {
+func (s *Executes) Commit() (err error) {
 	if s.tx == nil {
-		err = fmt.Errorf("please open the transaction first")
+		err = ErrorTransactionNotOpened
 		return
 	}
 	err = s.tx.Commit()
 	return
 }
 
-// Scan set scan function
-func (s *Exec) Scan(anonymous func(rows *sql.Rows) (err error)) *Exec {
+func (s *Executes) Scan(anonymous func(rows *sql.Rows) (err error)) *Executes {
 	s.scan = anonymous
 	return s
 }
 
-// Query execute a query sql, transaction priority
-func (s *Exec) Query(prepare string, args ...interface{}) (err error) {
-	var stmt *sql.Stmt
+func (s *Executes) Prepare(prepare string) *Executes {
+	s.prepare = prepare
+	return s
+}
+
+func (s *Executes) Args(args ...interface{}) *Executes {
+	s.args = args
+	return s
+}
+
+func (s *Executes) Stmt() (stmt *sql.Stmt, err error) {
 	if s.tx != nil {
-		stmt, err = s.tx.Prepare(prepare)
+		stmt, err = s.tx.Prepare(s.prepare)
 	} else {
-		stmt, err = s.db.Prepare(prepare)
+		stmt, err = s.db.Prepare(s.prepare)
 	}
+	return
+}
+
+func (s *Executes) FetchSql() (prepare string, args []interface{}) {
+	prepare, args = s.prepare, s.args
+	return
+}
+
+func (s *Executes) Query() (err error) {
+	var stmt *sql.Stmt
+	stmt, err = s.Stmt()
 	if err != nil {
 		return
 	}
 	defer stmt.Close()
 	var rows *sql.Rows
-	rows, err = stmt.Query(args...)
+	rows, err = stmt.Query(s.args...)
 	if err != nil {
 		return
 	}
@@ -136,20 +185,15 @@ func (s *Exec) Query(prepare string, args ...interface{}) (err error) {
 	return
 }
 
-// Exec execute a execute sql, transaction priority
-func (s *Exec) Exec(prepare string, args ...interface{}) (rowsAffected int64, err error) {
+func (s *Executes) Exec() (rowsAffected int64, err error) {
 	var stmt *sql.Stmt
-	if s.tx != nil {
-		stmt, err = s.tx.Prepare(prepare)
-	} else {
-		stmt, err = s.db.Prepare(prepare)
-	}
+	stmt, err = s.Stmt()
 	if err != nil {
 		return
 	}
 	defer stmt.Close()
 	var result sql.Result
-	result, err = stmt.Exec(args...)
+	result, err = stmt.Exec(s.args...)
 	if err != nil {
 		return
 	}
@@ -157,20 +201,15 @@ func (s *Exec) Exec(prepare string, args ...interface{}) (rowsAffected int64, er
 	return
 }
 
-// AddOne insert a piece of data and get the self-increment value of the inserted row, transaction priority
-func (s *Exec) AddOne(prepare string, args ...interface{}) (lastId int64, err error) {
+func (s *Executes) AddOne() (lastId int64, err error) {
 	var stmt *sql.Stmt
-	if s.tx != nil {
-		stmt, err = s.tx.Prepare(prepare)
-	} else {
-		stmt, err = s.db.Prepare(prepare)
-	}
+	stmt, err = s.Stmt()
 	if err != nil {
 		return
 	}
 	defer stmt.Close()
 	var result sql.Result
-	result, err = stmt.Exec(args...)
+	result, err = stmt.Exec(s.args...)
 	if err != nil {
 		return
 	}
@@ -178,10 +217,18 @@ func (s *Exec) AddOne(prepare string, args ...interface{}) (lastId int64, err er
 	return
 }
 
-// Transaction closure execution transaction, automatic rollback on error
-func (s *Exec) Transaction(times int, anonymous func(exe *Exec) (err error)) (err error) {
+func (s *Executes) OneStepExec(prepare string, args ...interface{}) (int64, error) {
+	return s.Prepare(prepare).Args(args...).Exec()
+}
+
+func (s *Executes) OneStepAddOne(prepare string, args ...interface{}) (int64, error) {
+	return s.Prepare(prepare).Args(args...).AddOne()
+}
+
+// Transaction closure execute transaction, automatic rollback on error
+func (s *Executes) Transaction(times int, anonymous func(exe *Executes) (err error)) (err error) {
 	if times <= 0 {
-		err = fmt.Errorf("the number of transactions executed by the database has been used up")
+		err = fmt.Errorf("mysql: the number of transactions executed by the database has been used up")
 		return
 	}
 	for i := 0; i < times; i++ {
@@ -198,25 +245,4 @@ func (s *Exec) Transaction(times int, anonymous func(exe *Exec) (err error)) (er
 		break
 	}
 	return
-}
-
-// BatchExec batch exec
-func (s *Exec) BatchExec(batch ...*BatchExec) (err error) {
-	err = s.Transaction(3, func(exe *Exec) (err error) {
-		for _, b := range batch {
-			_, err = s.Exec(b.Prepare, b.Args...)
-			if err != nil {
-				break
-			}
-		}
-		return
-	})
-	return
-}
-
-// NewExec create a exec
-func NewExec() *Exec {
-	return &Exec{
-		db: db,
-	}
 }
