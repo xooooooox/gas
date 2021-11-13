@@ -10,6 +10,9 @@ import (
 
 var db *rds.Pool
 
+// ErrNil reply value is nil
+var ErrNil = rds.ErrNil
+
 // Open connect to redis service, host: 127.0.0.1, port: 6379, auth: , serial: 1
 func Open(host string, port int, auth string, serial int) (err error) {
 	db = &rds.Pool{
@@ -36,14 +39,12 @@ func Open(host string, port int, auth string, serial int) (err error) {
 	return
 }
 
-// GetDatabase get database connect pool
-func GetDatabase() *rds.Pool {
-	return db
+func Db0(database *rds.Pool) {
+	db = database
 }
 
-// SetDatabase set database connect pool
-func SetDatabase(database *rds.Pool) {
-	db = database
+func Db1() *rds.Pool {
+	return db
 }
 
 // Do exec redis command 执行 redis 命令

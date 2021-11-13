@@ -27,12 +27,12 @@ func Open(dsn string) (err error) {
 	return
 }
 
-func Db0() *sql.DB {
-	return db
+func Db0(database *sql.DB) {
+	db = database
 }
 
-func Db1(database *sql.DB) {
-	db = database
+func Db1() *sql.DB {
+	return db
 }
 
 func Query(anonymous func(rows *sql.Rows) (err error), prepare string, args ...interface{}) error {
