@@ -1,3 +1,5 @@
+// mysql database call
+
 package mysql
 
 import (

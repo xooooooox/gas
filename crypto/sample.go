@@ -1,3 +1,5 @@
+// some simple encryption functions
+
 package crypto
 
 import (

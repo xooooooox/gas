@@ -1,3 +1,5 @@
+// go language call link information
+
 package helper
 
 import (

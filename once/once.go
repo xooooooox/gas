@@ -1,10 +1,10 @@
+// used for business procedures that are executed only once
+
 package once
 
 import (
 	"sync"
 )
-
-// used for business procedures that are executed only once
 
 // default, map of box value type is interface{}
 
