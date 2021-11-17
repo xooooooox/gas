@@ -129,6 +129,7 @@ func (s *Executes) Rollback() (err error) {
 		return
 	}
 	err = s.tx.Rollback()
+	s.tx = nil
 	return
 }
 
@@ -138,6 +139,7 @@ func (s *Executes) Commit() (err error) {
 		return
 	}
 	err = s.tx.Commit()
+	s.tx = nil
 	return
 }
 
@@ -234,16 +236,16 @@ func (s *Executes) Transaction(times int, anonymous func(exe *Executes) (err err
 		return
 	}
 	for i := 0; i < times; i++ {
-		s.tx, err = s.db.Begin()
+		err = s.Begin()
 		if err != nil {
 			continue
 		}
 		err = anonymous(s)
 		if err != nil {
-			_ = s.tx.Rollback()
+			_ = s.Rollback()
 			continue
 		}
-		_ = s.tx.Commit()
+		_ = s.Commit()
 		break
 	}
 	return
