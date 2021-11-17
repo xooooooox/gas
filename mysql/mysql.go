@@ -38,18 +38,19 @@ func Db1() *sql.DB {
 }
 
 func Query(anonymous func(rows *sql.Rows) (err error), prepare string, args ...interface{}) error {
-	return NewSql().OneStepQuery(anonymous, prepare, args...)
+	return NewExec().OneStepQuery(anonymous, prepare, args...)
 }
 
-func Exec(prepare string, args ...interface{}) (int64, error) {
-	return NewSql().OneStepExec(prepare, args...)
+func Execute(prepare string, args ...interface{}) (int64, error) {
+	return NewExec().OneStepExecute(prepare, args...)
 }
 
 func AddOne(prepare string, args ...interface{}) (int64, error) {
-	return NewSql().OneStepAddOne(prepare, args...)
+	return NewExec().OneStepAddOne(prepare, args...)
 }
 
-type Sql struct {
+// Exec mysql database sql statement execute object
+type Exec struct {
 	db      *sql.DB                          // database connection object
 	tx      *sql.Tx                          // database transaction object
 	prepare string                           // sql statement to be executed
@@ -57,18 +58,18 @@ type Sql struct {
 	scan    func(rows *sql.Rows) (err error) // scan query results
 }
 
-func NewSql() *Sql {
-	return &Sql{
+func NewExec() *Exec {
+	return &Exec{
 		db: db,
 	}
 }
 
-func (s *Sql) Begin() (err error) {
+func (s *Exec) Begin() (err error) {
 	s.tx, err = s.db.Begin()
 	return
 }
 
-func (s *Sql) Rollback() (err error) {
+func (s *Exec) Rollback() (err error) {
 	if s.tx == nil {
 		err = ErrorTransactionNotOpened
 		return
@@ -78,7 +79,7 @@ func (s *Sql) Rollback() (err error) {
 	return
 }
 
-func (s *Sql) Commit() (err error) {
+func (s *Exec) Commit() (err error) {
 	if s.tx == nil {
 		err = ErrorTransactionNotOpened
 		return
@@ -88,22 +89,22 @@ func (s *Sql) Commit() (err error) {
 	return
 }
 
-func (s *Sql) Scan(anonymous func(rows *sql.Rows) (err error)) *Sql {
+func (s *Exec) Scan(anonymous func(rows *sql.Rows) (err error)) *Exec {
 	s.scan = anonymous
 	return s
 }
 
-func (s *Sql) Prepare(prepare string) *Sql {
+func (s *Exec) Prepare(prepare string) *Exec {
 	s.prepare = prepare
 	return s
 }
 
-func (s *Sql) Args(args ...interface{}) *Sql {
+func (s *Exec) Args(args ...interface{}) *Exec {
 	s.args = args
 	return s
 }
 
-func (s *Sql) Stmt() (stmt *sql.Stmt, err error) {
+func (s *Exec) Stmt() (stmt *sql.Stmt, err error) {
 	if s.tx != nil {
 		stmt, err = s.tx.Prepare(s.prepare)
 	} else {
@@ -112,12 +113,12 @@ func (s *Sql) Stmt() (stmt *sql.Stmt, err error) {
 	return
 }
 
-func (s *Sql) FetchSql() (prepare string, args []interface{}) {
+func (s *Exec) FetchSql() (prepare string, args []interface{}) {
 	prepare, args = s.prepare, s.args
 	return
 }
 
-func (s *Sql) Query() (err error) {
+func (s *Exec) Query() (err error) {
 	var stmt *sql.Stmt
 	stmt, err = s.Stmt()
 	if err != nil {
@@ -134,7 +135,7 @@ func (s *Sql) Query() (err error) {
 	return
 }
 
-func (s *Sql) Exec() (rowsAffected int64, err error) {
+func (s *Exec) Execute() (rowsAffected int64, err error) {
 	var stmt *sql.Stmt
 	stmt, err = s.Stmt()
 	if err != nil {
@@ -150,7 +151,7 @@ func (s *Sql) Exec() (rowsAffected int64, err error) {
 	return
 }
 
-func (s *Sql) AddOne() (lastId int64, err error) {
+func (s *Exec) AddOne() (lastId int64, err error) {
 	var stmt *sql.Stmt
 	stmt, err = s.Stmt()
 	if err != nil {
@@ -166,21 +167,21 @@ func (s *Sql) AddOne() (lastId int64, err error) {
 	return
 }
 
-func (s *Sql) OneStepQuery(anonymous func(rows *sql.Rows) (err error), prepare string, args ...interface{}) (err error) {
+func (s *Exec) OneStepQuery(anonymous func(rows *sql.Rows) (err error), prepare string, args ...interface{}) (err error) {
 	err = s.Scan(anonymous).Prepare(prepare).Args(args...).Query()
 	return
 }
 
-func (s *Sql) OneStepExec(prepare string, args ...interface{}) (int64, error) {
-	return s.Prepare(prepare).Args(args...).Exec()
+func (s *Exec) OneStepExecute(prepare string, args ...interface{}) (int64, error) {
+	return s.Prepare(prepare).Args(args...).Execute()
 }
 
-func (s *Sql) OneStepAddOne(prepare string, args ...interface{}) (int64, error) {
+func (s *Exec) OneStepAddOne(prepare string, args ...interface{}) (int64, error) {
 	return s.Prepare(prepare).Args(args...).AddOne()
 }
 
 // Transaction closure execute transaction, automatic rollback on error
-func (s *Sql) Transaction(times int, anonymous func(exe *Sql) (err error)) (err error) {
+func (s *Exec) Transaction(times int, anonymous func(exe *Exec) (err error)) (err error) {
 	if times <= 0 {
 		err = fmt.Errorf("mysql: the number of transactions executed by the database has been used up")
 		return
